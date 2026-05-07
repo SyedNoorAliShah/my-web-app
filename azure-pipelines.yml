@@ -1,0 +1,46 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+
+- stage: Build
+  displayName: 'Build and Push Docker Image'
+  jobs:
+  - job: BuildJob
+    steps:
+    - task: Docker@2
+      displayName: 'Build and Push Docker Image'
+      inputs:
+        command: buildAndPush
+        dockerfile: '**/Dockerfile'
+        containerRegistry: 'DockerHubConnection'
+        repository: 'nooralishah270/my-web-app'
+        tags: latest
+
+- stage: Terraform
+  displayName: 'Terraform Provision'
+  dependsOn: Build
+  jobs:
+  - job: TerraformJob
+    steps:
+    - script: |
+        cd terraform
+        terraform init
+        terraform apply -auto-approve
+      displayName: 'Terraform Init and Apply'
+
+- stage: Deploy
+  displayName: 'Deploy App'
+  dependsOn: Terraform
+  jobs:
+  - deployment: DeployJob
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "✅ App Deployed Successfully!"
+            displayName: 'Deployment Done'
